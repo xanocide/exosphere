@@ -104,4 +104,4 @@ venv.bak/
 .mypy_cache/
 
 #ignore configs
-configs.py
+configs/configs.py
