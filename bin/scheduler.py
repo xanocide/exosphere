@@ -21,7 +21,7 @@ class Scheduler():
         The scheduler is designed to be highly available and scalable
         to allow multiple schedulers to be running at once. Incase of failure
         a new scheduler will take the role of primary if multiple instances
-        of the scheduler is running.
+        of the scheduler are running.
     '''
 
     def __init__(self):
