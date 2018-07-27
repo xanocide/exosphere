@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 '''
+    The exosphere job scheduler
 '''
 
 import time
 import math
 import requests
 import socket
+import uuid
 from datetime import datetime
 
 from exosphere.configs.configs import Configs
@@ -28,6 +30,7 @@ class Scheduler():
     def __init__(self):
 
         self.hostname = socket.gethostbyname(socket.gethostname())
+        self.scheduler_name = uuid.uuid4()
         self.mongo_client = self.open_mongo_connection()
 
     def schedule(self):
@@ -89,7 +92,9 @@ class Scheduler():
 
         try:
             self.mongo_client.exosphere.schedulers.insert_one({
+                '_id': (self.hostname + ':' + self.scheduler_name),
                 'hostname': self.hostname,
+                'schedulerName': self.scheduler_name,
                 'startedAt': datetime.utcnow(),
                 'lastCheckedIn': datetime.utcnow(),
                 'score': self.scheduler_score,
@@ -206,7 +211,7 @@ class Scheduler():
 
         try:
             self.mongo_client.exosphere.schedulers.update(
-                {'hostname': self.hostname},
+                {'schedulerName': self.scheduler_name},
                 {'$set': {'primary': True}}
             )
         except Exception as err:
@@ -239,10 +244,10 @@ class Scheduler():
             new_primary = None
             for scheduler in primary_schedulers:
                 if scheduler.get('score', math.inf) < best_score:
-                    new_primary = scheduler.get('hostname')
+                    new_primary = scheduler.get('schedulerName')
 
             self.mongo_client.exosphere.schedulers.update(
-                {'hostname': new_primary},
+                {'schedulerName': new_primary},
                 {'$set': {'primary': True}}
             )
 
@@ -260,7 +265,7 @@ class Scheduler():
 
         scheduler = list(
             self.mongo_client.exosphere.schedulers.find(
-                {'hostname': self.hostname}))
+                {'schedulerName': self.scheduler_name}))
 
         if scheduler:
             status = scheduler[0].get('primary', False)
@@ -269,6 +274,20 @@ class Scheduler():
             else:
                 return False
         return False
+
+    def just_checking_in(self):
+        '''
+            Update that check in time of the scheduler in MongoDB for this
+            specific instance
+
+        Args:
+            None
+        Returns:
+            Updates MongoDB schedulers with their current check in time
+        '''
+
+        self.mongo_client.exosphere.schedulers.update(
+            {'schedulerName': self.scheduler_name})
 
     def start_kicking_off_jobs(self):
         '''
