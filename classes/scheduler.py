@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 '''
-    The exosphere job scheduler
+    scheduler.py
+    ~~~~~~~~~~~~
+
+    The exosphere job scheduler class, a high availability scheduler that is
+    scalable and reliable.
+
+    :copyright: © 2018 Dylan Murray
 '''
 
 import time
@@ -21,10 +27,13 @@ logging = CONFIGS.get_logging()
 class Scheduler():
     '''
         Exosphere scheduler class, used for scheduling exosphere jobs.
-        The scheduler is designed to be highly available and scalable
-        to allow multiple schedulers to be running at once. Incase of failure
-        a new scheduler will take the role of primary if multiple instances
-        of the scheduler are running.
+        The scheduler is designed to be highly available and if a scheduler
+        dies a new one will take its place (if multiple instances of the
+        scheduler are running). The scheduler can also be run solo if you
+        wish to run it this way (not recommended). In high availability
+        mode a primary scheduler is determined by the best ping score out of 3
+        attempts, the secondary schedulers sit dormant until called upon to
+        act as the primary if for some reason the primary scheduler dies.
     '''
 
     def __init__(self):
@@ -33,11 +42,16 @@ class Scheduler():
         self.scheduler_name = uuid.uuid4()
         self.mongo_client = self.open_mongo_connection()
 
-    def schedule(self):
+    def high_availability_scheduler(self):
         '''
-            Determines if this scheduler should be the primary scheduler or not
-            and starts running the scheduler if we determine this is the
-            primary
+            High availability scheduler is designed to scale schedulers to
+            ensure that jobs are always being scheduled even if the initial
+            primary scheduler has died. The high availability scheduler will
+            determine if this instance of the scheduler should be the primary
+            or if it should sit dormant until the primary dies to assume the
+            primary role. If this instance turns into the primary scheduler,
+            we start the job scheduling function to begin scheduling exosphere
+            jobs.
 
         Args:
             None
@@ -53,16 +67,16 @@ class Scheduler():
                 self.set_scheduler_to_primary()
                 self.ensure_there_is_only_one_primary_scheduler()
                 if self.am_i_still_primary_scheduler():
-                    self.start_kicking_off_jobs()
+                    self.schedule()
             elif self.should_i_be_primary_scheduler():
                 self.set_scheduler_to_primary()
                 self.ensure_there_is_only_one_primary_scheduler()
                 if self.am_i_still_primary_scheduler():
-                    self.start_kicking_off_jobs()
+                    self.schedule()
 
             # Sleep for 3 minutes before we check if we should be the primary
             # scheduler again
-            time.sleep(300)
+            time.sleep(180)
 
     @connect('MONGO')
     def open_mongo_connection(client, self):
@@ -287,10 +301,24 @@ class Scheduler():
         '''
 
         self.mongo_client.exosphere.schedulers.update(
-            {'schedulerName': self.scheduler_name})
+            {'schedulerName': self.scheduler_name},
+            {'$set': {'lastCheckedIn': datetime.utcnow()}}
+        )
 
-    def start_kicking_off_jobs(self):
+    def schedule(self):
         '''
+            If this instance of the scheduler is the primary scheduler, this
+            function is used to begin to schedule jobs to RabbitMQ for
+            exosphere workers to consume and run. The scheduler will
+            periodically check to make sure it is the only primary scheduler
+            to ensure we are not double scheduling jobs to the queue with 2
+            schedulers. If this scheduler finds that it is not longer the
+            primary, it will return itself back to the high availability state.
+
+        Args:
+            None
+        Returns:
+            Schedules exosphere jobs to RabbitMQ
         '''
 
         while True:
