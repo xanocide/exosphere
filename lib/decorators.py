@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 '''
-    A storage place for decorators that are used throughout
-    the project
+    decorators.py
+    ~~~~~~~~~~~~~
+
+    General decorators that are used throughout the exosphere
+    project.
+
+    :copyright: © 2018 Dylan Murray
 '''
 
 import functools
@@ -17,6 +22,7 @@ CONFIGS = Configs()
 def execute(f):
     '''
         Decorator to log script run times
+
     Args:
         f(function): Function you wish to wrap
     Returns:
@@ -47,6 +53,7 @@ def connect(db):
     '''
         Connects to a database and passes a cursor to
         a function to be used
+
     Args:
         db(str): Database you wish to connect to
     Returns:

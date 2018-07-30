@@ -14,6 +14,7 @@ import math
 import requests
 import socket
 import uuid
+import logging
 from datetime import datetime
 
 from exosphere.configs.configs import Configs
@@ -21,7 +22,6 @@ from exosphere.lib.decorators import connect
 
 
 CONFIGS = Configs()
-logging = CONFIGS.get_logging()
 
 
 class Scheduler():
@@ -325,6 +325,31 @@ class Scheduler():
             self.ensure_there_is_only_one_primary_scheduler()
             if not self.am_i_still_primary_scheduler():
                 break
+
+            jobs_to_schedule = self.pull_enabled_jobs_from_mongo()
+
             time.sleep(10)
 
         return
+
+    def pull_enabled_jobs_from_mongo(self):
+        '''
+            Find all enabled jobs in MongoDB and pull them
+
+        Args:
+            None
+        Returns:
+            List of enabled jobs (list)
+        '''
+
+        try:
+            enabled_jobs = list(
+                self.mongo_client.exosphere.jobs.find({'enabled': True})
+            )
+        except Exception as err:
+            logging.error(
+                'Unable to pull enabled jobs from mongo: {err}'
+                .format(err=err))
+            raise
+
+        return enabled_jobs
