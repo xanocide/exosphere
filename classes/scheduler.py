@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
 '''
-    scheduler.py
-    ~~~~~~~~~~~~
+scheduler.py
+~~~~~~~~~~~~
 
-    The exosphere job scheduler class, a high availability scheduler that is
-    scalable and reliable.
+The exosphere job scheduler class, a high availability scheduler that is
+scalable and reliable.
 
-    :copyright: © 2018 Dylan Murray
+:copyright: © 2018 Dylan Murray
 '''
 
 import time
@@ -19,6 +18,7 @@ from datetime import datetime
 
 from exosphere.configs.configs import Configs
 from exosphere.lib.decorators import connect
+from exosphere.classes.job import Job
 
 
 CONFIGS = Configs()
@@ -26,14 +26,14 @@ CONFIGS = Configs()
 
 class Scheduler():
     '''
-        Exosphere scheduler class, used for scheduling exosphere jobs.
-        The scheduler is designed to be highly available and if a scheduler
-        dies a new one will take its place (if multiple instances of the
-        scheduler are running). The scheduler can also be run solo if you
-        wish to run it this way (not recommended). In high availability
-        mode a primary scheduler is determined by the best ping score out of 3
-        attempts, the secondary schedulers sit dormant until called upon to
-        act as the primary if for some reason the primary scheduler dies.
+    Exosphere scheduler class, used for scheduling exosphere jobs.
+    The scheduler is designed to be highly available and if a scheduler
+    dies a new one will take its place (if multiple instances of the
+    scheduler are running). The scheduler can also be run solo if you
+    wish to run it this way (not recommended). In high availability
+    mode a primary scheduler is determined by the best ping score out of 3
+    attempts, the secondary schedulers sit dormant until called upon to
+    act as the primary if for some reason the primary scheduler dies.
     '''
 
     def __init__(self):
@@ -44,14 +44,14 @@ class Scheduler():
 
     def high_availability_scheduler(self):
         '''
-            High availability scheduler is designed to scale schedulers to
-            ensure that jobs are always being scheduled even if the initial
-            primary scheduler has died. The high availability scheduler will
-            determine if this instance of the scheduler should be the primary
-            or if it should sit dormant until the primary dies to assume the
-            primary role. If this instance turns into the primary scheduler,
-            we start the job scheduling function to begin scheduling exosphere
-            jobs.
+        High availability scheduler is designed to scale schedulers to
+        ensure that jobs are always being scheduled even if the initial
+        primary scheduler has died. The high availability scheduler will
+        determine if this instance of the scheduler should be the primary
+        or if it should sit dormant until the primary dies to assume the
+        primary role. If this instance turns into the primary scheduler,
+        we start the job scheduling function to begin scheduling exosphere
+        jobs.
 
         Args:
             None
@@ -81,8 +81,8 @@ class Scheduler():
     @connect('MONGO')
     def open_mongo_connection(client, self):
         '''
-            Opens a mongo client connection upon class initialization so we
-            do not have to open and close a many connections as the tool runs
+        Opens a mongo client connection upon class initialization so we
+        do not have to open and close a many connections as the tool runs
 
         Args:
             None
@@ -93,10 +93,10 @@ class Scheduler():
 
     def create_scheduler_information(self):
         '''
-            Writes the initial scheduler information when the scheduler
-            begins to run to mongo. Allows us to visually see which shcedulures
-            are running and where, as well as which schedulers are primary
-            or secondary.
+        Writes the initial scheduler information when the scheduler
+        begins to run to mongo. Allows us to visually see which shcedulures
+        are running and where, as well as which schedulers are primary
+        or secondary.
 
         Args:
             None
@@ -307,13 +307,13 @@ class Scheduler():
 
     def schedule(self):
         '''
-            If this instance of the scheduler is the primary scheduler, this
-            function is used to begin to schedule jobs to RabbitMQ for
-            exosphere workers to consume and run. The scheduler will
-            periodically check to make sure it is the only primary scheduler
-            to ensure we are not double scheduling jobs to the queue with 2
-            schedulers. If this scheduler finds that it is not longer the
-            primary, it will return itself back to the high availability state.
+        If this instance of the scheduler is the primary scheduler, this
+        function is used to begin to schedule jobs to RabbitMQ for
+        exosphere workers to consume and run. The scheduler will
+        periodically check to make sure it is the only primary scheduler
+        to ensure we are not double scheduling jobs to the queue with 2
+        schedulers. If this scheduler finds that it is not longer the
+        primary, it will return itself back to the high availability state.
 
         Args:
             None
@@ -327,6 +327,10 @@ class Scheduler():
                 break
 
             jobs_to_schedule = self.pull_enabled_jobs_from_mongo()
+
+            for get_job in jobs_to_schedule:
+                job_obj = Job(get_job.get('jobName', None))
+                job_obj.check_requirements_and_schedule()
 
             time.sleep(10)
 

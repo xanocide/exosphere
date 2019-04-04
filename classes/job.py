@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
 '''
-    job.py
-    ~~~~~~
+job.py
+~~~~~~
 
-    The exosphere job class, this class houses all of the functionality for
-    scheduling a job and running a job
+The exosphere job class, this class houses all of the functionality for
+scheduling a job and running a job
 
-    :copyright: © 2018 Dylan Murray
+:copyright: © 2018 Dylan Murray
 '''
 
 from datetime import datetime, timedelta
@@ -17,7 +16,7 @@ from croniter import croniter
 
 from exosphere.configs.configs import Configs
 from exosphere.lib.decorators import connect
-from exosphere.lib import util
+# from exosphere.lib import util
 
 
 CONFIGS = Configs()
@@ -25,22 +24,20 @@ CONFIGS = Configs()
 
 class Job():
     '''
-        The exosphere job class
+    The exosphere job class
     '''
 
     def __init__(self, job_name=''):
 
         self.job = self.pull_job_info_from_mongo(job_name)
         self.name = job_name
-        self.cron = self.job.get('cron')
-        self.trigger = self.job.get('trigger')
         self.dependencies = self.job.get('dependencies', {})
         self.last_report_date = self.job.get('lastReportDate')
 
     @connect('MONGO')
     def pull_job_info_from_mongo(self, client, job_name):
         '''
-            Pulls entire job document from MongoDB to be used by the job class.
+        Pulls entire job document from MongoDB to be used by the job class.
 
         Args:
             MongoDB client (obj)
@@ -60,11 +57,11 @@ class Job():
 
     def check_requirements_and_schedule(self):
         '''
-            Determines if it is time for a job to be scheduled,
-            a job has two types of schedule time (CRON, TRIGGER)
-            if a job is cron, check if the cron time is now.
-            if a job is trigger check if the job dependencies have
-            been met to schedule the job.
+        Determines if it is time for a job to be scheduled,
+        a job has two types of schedule time (CRON, TRIGGER)
+        if a job is cron, check if the cron time is now.
+        if a job is trigger check if the job dependencies have
+        been met to schedule the job.
 
         Args:
             None
@@ -81,11 +78,11 @@ class Job():
 
     def trigger_job_is_ready_for_scheduling(self):
         '''
-            Check if a jobs trigger period is has passed since its
-            last run date. If the jobs trigger period has passed the job
-            is labeled as stale. If the job is stale, check the jobs
-            dependencies to make sure they are satisfied. If the jobs
-            dependcencies are satisfied it is ready for scheduling.
+        Check if a jobs trigger period is has passed since its
+        last run date. If the jobs trigger period has passed the job
+        is labeled as stale. If the job is stale, check the jobs
+        dependencies to make sure they are satisfied. If the jobs
+        dependcencies are satisfied it is ready for scheduling.
 
         Args:
             None
@@ -102,12 +99,12 @@ class Job():
 
     def check_job_dependencies(self):
         '''
-            Checks the dependencies of a job to make sure they are satisfied
-            before publishing. If the depedencies are not met, a job will not
-            be scheduled. A job may have two types of dependences:
+        Checks the dependencies of a job to make sure they are satisfied
+        before publishing. If the depedencies are not met, a job will not
+        be scheduled. A job may have two types of dependences:
 
-            1) Another job (checks last report date of job)
-            2) Database tables (checks table to make sure current data exists)
+        1) Another job (checks last report date of job)
+        2) Database tables (checks table to make sure current data exists)
 
         Args:
             None
@@ -116,25 +113,25 @@ class Job():
         '''
 
         job_dependencies = self.dependencies.get('jobs', [])
-        database_dependencies = self.dependencies.get('database', [])
+        # database_dependencies = self.dependencies.get('database', [])
 
         for job in job_dependencies:
             if self.check_if_job_is_stale(job.get('jobName')):
                 return False
 
-        if database_dependencies:
-            next_report_date = self.get_job_next_report_date()
-            for database in database_dependencies:
-                if not self.check_if_database_is_ready(
-                    database, next_report_date
-                ):
-                    return False
+        # if database_dependencies:
+        #     next_report_date = self.get_job_next_report_date()
+        #     for database in database_dependencies:
+        #         if not self.check_if_database_is_ready(
+        #             database, next_report_date
+        #         ):
+        #             return False
         return True
 
     def get_job_next_report_date(self):
         '''
-            Returns the next scheduled report date for the job, only if the job
-            is trigger. If the job is a cron job this will be ignored.
+        Returns the next scheduled report date for the job, only if the job
+        is trigger. If the job is a cron job this will be ignored.
 
         Args:
             None
@@ -176,39 +173,39 @@ class Job():
                 .format(job=self.job.get('name'), unit=unit))
         return
 
-    def check_if_database_is_ready(self, database, value):
-        '''
-            Check if a table in a database has the required data to run a job.
-            If not, job will not publish.
+    # def check_if_database_is_ready(self, database, value):
+    #     '''
+    #     Check if a table in a database has the required data to run a job.
+    #     If not, job will not publish.
 
-            Args:
-                Database (dict): example
-                {
-                    "schema" : "schema",
-                    "field" : "field",
-                    "table" : "table",
-                    "dbName" : "MONGO"
-                }
-                value (int | str):  value to search the column in a table for
-            Returns:
-                (bool): True(value exists in table) | False(value not in table)
-        '''
+    #     Args:
+    #         Database (dict): example
+    #         {
+    #             "schema" : "schema",
+    #             "field" : "field",
+    #             "table" : "table",
+    #             "dbName" : "MONGO"
+    #         }
+    #         value (int | str):  value to search the column in a table for
+    #     Returns:
+    #         (bool): True(value exists in table) | False(value not in table)
+    #     '''
 
-        db = database.get('dbName')
-        schema = database.get('schema')
-        table = database.get('table')
-        column = database.get('column')
+    #     db = database.get('dbName')
+    #     schema = database.get('schema')
+    #     table = database.get('table')
+    #     column = database.get('column')
 
-        if all([db, schema, table, column, value]):
-            if util.value_exists_in_db(db, schema, table, column, value):
-                return True
-        return False
+    #     if all([db, schema, table, column, value]):
+    #         if util.value_exists_in_db(db, schema, table, column, value):
+    #             return True
+    #     return False
 
     def cron_job_is_ready_for_scheduling(self):
         '''
-            Check if the jobs cron time is coming up in the next 5 minutes,
-            if it is the job is ready to be published with a delay so it will
-            run exactly on schedule
+        Check if the jobs cron time is coming up in the next 5 minutes,
+        if it is the job is ready to be published with a delay so it will
+        run exactly on schedule
 
         Args:
             None
@@ -227,15 +224,15 @@ class Job():
         else:
             logging.error(
                 'Job cron time is invalid, can not be published: '
-                '{job_name}'.format(job_name=self.job.get('name', '~~~')))
+                '{job_name}'.format(job_name=self.job.get('name', 'Null')))
         return False
 
     @connect('MONGO')
     def check_if_job_is_stale(self, job_name):
         '''
-            Check if the jobs last report date is stale compared to when it
-            is scheduled to next run. If it is stale, it is ready to be run.
-            If the report date is not stale, the job is not ready to be run.be
+        Check if the jobs last report date is stale compared to when it
+        is scheduled to next run. If it is stale, it is ready to be run.
+        If the report date is not stale, the job is not ready to be run.
 
         Args:
             None
@@ -244,8 +241,7 @@ class Job():
         '''
 
         job = self.pull_job_info_from_mongo(job_name)
-        last_report_date = job.get(
-            'lastReportDate', datetime(2010, 1, 1, 1, 1))
+        last_report_date = job.get('lastRunTime', datetime(2010, 1, 1, 1, 1))
         cron = job.get('cron')
         trigger = job.get('trigger')
 
@@ -279,6 +275,6 @@ class Job():
 
     def schedule(self, delay=0):
         '''
-            Publish the job to be picked up by a consumer
+        Publish the job to be picked up by a consumer
         '''
         pass
