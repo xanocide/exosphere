@@ -39,7 +39,7 @@ class Scheduler():
     def __init__(self):
 
         self.hostname = socket.gethostbyname(socket.gethostname())
-        self.scheduler_name = uuid.uuid4()
+        self.scheduler_name = str(uuid.uuid4())
         self.mongo_client = self.open_mongo_connection()
 
     def high_availability_scheduler(self):
